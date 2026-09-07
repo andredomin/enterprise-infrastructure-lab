@@ -298,12 +298,12 @@ docs/
 │   └── network-topology.png
 │
 └── phases/
-    ├── 01-network-foundation.md
-    ├── 02-firewall.md
-    ├── 03-active-directory.md
-    ├── 04-linux-integration.md
-    ├── 05-monitoring.md
-    └── 06-siem.md
+    ├── 01-network-foundation
+    ├── 02-firewall
+    ├── 03-active-directory
+    ├── 04-linux-integration
+    ├── 05-monitoring
+    └── 06-siem
 ```
 
 Documentation will focus not only on the final configuration, but also on the reasoning behind each implementation.
@@ -393,7 +393,7 @@ windows-infrastructure-lab/
 │   │   └── network-topology.png
 │   │
 │   └── phases/
-│       └── 01-network-foundation.md
+│       └── 01-network-foundation
 │
 ├── scripts/
 │   └── powershell/
