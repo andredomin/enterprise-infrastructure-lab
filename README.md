@@ -33,7 +33,7 @@ Active Directory is provided by `DC01`, while Windows 11 and Arch Linux operate 
                             │
                        LAN: 10.10.10.1
                             │
-                           LAB2
+                           LAB
                             │
           ┌─────────────────┼─────────────────┐
           │                 │                 │
@@ -68,7 +68,7 @@ docs/architecture/network-topology.png
 | DC01         |   `10.10.10.10` | Active Directory / DNS / Kerberos KDC |
 | Windows 11   |   `10.10.10.20` | Domain Client                         |
 | Arch Linux   |   `10.10.10.30` | Linux AD Client                       |
-| LAB2         | `10.10.10.0/24` | Isolated Laboratory Network           |
+| LAB          | `10.10.10.0/24` | Isolated Laboratory Network           |
 
 ### Network design
 
@@ -180,7 +180,7 @@ The laboratory will be developed progressively. Each phase will introduce new in
 * [x] Deploy OPNsense
 * [x] Configure OPNsense WAN
 * [x] Configure OPNsense LAN
-* [x] Configure `LAB2` network
+* [x] Configure `LAB` network
 * [x] Configure laboratory gateway
 * [x] Configure Internet access through OPNsense
 * [x] Configure Active Directory
