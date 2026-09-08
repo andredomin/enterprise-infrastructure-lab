@@ -302,8 +302,8 @@ docs/
     ├── 02-firewall-network-security
     ├── 03-IDS/IPS
     ├── 04-windows-security-and-AD
-    ├── 05-monitoring
-    └── 06-siem
+    ├── 05-monitoring-siem
+    └── 06-network-segmentation
 ```
 
 Documentation will focus not only on the final configuration, but also on the reasoning behind each implementation.
