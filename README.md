@@ -299,9 +299,9 @@ docs/
 │
 └── phases/
     ├── 01-network-foundation
-    ├── 02-firewall
-    ├── 03-active-directory
-    ├── 04-linux-integration
+    ├── 02-firewall-network-security
+    ├── 03-IDS/IPS
+    ├── 04-windows-security-and-AD
     ├── 05-monitoring
     └── 06-siem
 ```
