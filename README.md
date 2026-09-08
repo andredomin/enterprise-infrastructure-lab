@@ -195,14 +195,14 @@ The laboratory will be developed progressively. Each phase will introduce new in
 
 ## Phase 2 — Firewall & Network Security
 
-* [ ] Design firewall policy
-* [ ] Understand stateful firewall behaviour
-* [ ] Create LAN rules
-* [ ] Restrict unnecessary outbound traffic
-* [ ] Configure NAT policies
-* [ ] Test blocked and permitted traffic
-* [ ] Document firewall decisions
-* [ ] Implement least-privilege network access
+* [x] Design firewall policy
+* [x] Understand stateful firewall behaviour
+* [x] Create LAN rules
+* [x] Restrict unnecessary outbound traffic
+* [x] Configure NAT policies
+* [x] Test blocked and permitted traffic
+* [x] Document firewall decisions
+* [x] Implement least-privilege network access
 
 ## Phase 3 — IDS / IPS
 
