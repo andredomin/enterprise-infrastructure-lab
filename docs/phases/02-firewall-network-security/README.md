@@ -328,12 +328,7 @@ The lab therefore uses explicit ALLOW rules for required services followed by a 
 
 This provides a foundation for future network segmentation, IDS/IPS, monitoring, and SIEM implementation.
 
-### Evidence
 
-```text
-screenshots/
-└── 08-least-privilege.png
-```
 
 ---
 
