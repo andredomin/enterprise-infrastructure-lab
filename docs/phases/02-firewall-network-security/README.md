@@ -43,30 +43,30 @@ The lab network is connected through the VirtualBox `LAB2` internal network.
 
 # 1. Design Firewall Policy
 
-The firewall policy will be designed according to the principle:
+The firewall policy follows the principle:
 
 > Allow required traffic and deny unnecessary traffic.
 
-Initial policy objectives:
+The initial policy objectives are:
 
-| Source | Destination | Policy            | Rationale                                  |
-| ------ | ----------- | ----------------- | ------------------------------------------ |
-| LAB    | Internet    | Allow             | Required for updates and external services |
-| LAB    | LAB         | Allow as required | Internal lab communication                 |
-| LAB    | OPNsense    | Allow as required | Required network services                  |
-| WAN    | LAB         | Deny              | Prevent unsolicited inbound access         |
-| WAN    | OPNsense    | Deny              | Protect the firewall                       |
+| Source | Destination | Policy            | Rationale                                      |
+| ------ | ----------- | ----------------- | ---------------------------------------------- |
+| LAB    | Internet    | Allow             | Required for updates and external services     |
+| LAB    | DC01        | Allow as required | Required for DNS and Active Directory services |
+| LAB    | OPNsense    | Allow as required | Required network services                      |
+| WAN    | LAB         | Deny              | Prevent unsolicited inbound access             |
+| WAN    | OPNsense    | Deny              | Protect the firewall                           |
 
-Firewall decisions will be based on:
+Firewall decisions are based on:
 
 * Source
 * Destination
 * Protocol
 * Port
 * Direction
-* Business or technical requirement
+* Technical requirement
 
-Rules will be documented together with their security rationale.
+Rules are documented according to their purpose and security rationale.
 
 ---
 
@@ -101,30 +101,37 @@ The distinction between:
 * Established connections
 * Return traffic
 
-will be considered when designing the firewall rules.
+is considered when designing and evaluating firewall behaviour.
 
 ---
 
 # 3. Create LAN Rules
 
-LAN firewall rules will control traffic originating from the `10.10.10.0/24` network.
+LAN firewall rules control traffic originating from the `10.10.10.0/24` network.
 
-Rules will be created according to actual lab requirements rather than allowing unrestricted traffic by default.
+The default `Allow LAN to any` rule was disabled in favour of explicit access rules.
 
-Examples of traffic that may require explicit consideration include:
+The following traffic is explicitly permitted where required by the lab:
 
-* DNS
-* HTTP/HTTPS
-* Internal AD services
-* Windows update traffic
-* Linux package repositories
-* Required communication between lab hosts
+| Service                  | Destination          | Protocol / Port |
+| ------------------------ | -------------------- | --------------- |
+| DNS                      | DC01 (`10.10.10.10`) | TCP/UDP 53      |
+| Kerberos                 | DC01                 | TCP/UDP 88      |
+| LDAP                     | DC01                 | TCP/UDP 389     |
+| SMB                      | DC01                 | TCP 445         |
+| RPC Endpoint Mapper      | DC01                 | TCP 135         |
+| RPC Dynamic              | DC01                 | TCP 49152-65535 |
+| Global Catalog           | DC01                 | TCP 3268        |
+| Global Catalog SSL       | DC01                 | TCP 3269        |
+| Kerberos Password Change | DC01                 | TCP/UDP 464     |
+| HTTP                     | Internet             | TCP 80          |
+| HTTPS                    | Internet             | TCP 443         |
 
-Rules will be ordered carefully because firewall rule order affects traffic evaluation.
+Rules are evaluated from top to bottom. Specific ALLOW rules are therefore placed before the final catch-all BLOCK rule.
 
 ### Evidence
 
-Relevant firewall rules will be captured in:
+Relevant firewall configuration is captured in:
 
 ```text
 screenshots/
@@ -135,26 +142,59 @@ screenshots/
 
 # 4. Restrict Unnecessary Outbound Traffic
 
-Outbound traffic will be reviewed to identify services that do not require Internet access.
+The default unrestricted outbound rule was disabled:
 
-The objective is to reduce unnecessary network exposure and apply least-privilege principles to outbound connectivity.
+```text
+Default allow LAN to any
+```
 
-Potential restrictions may include:
+A catch-all rule was enabled to block traffic that is not explicitly permitted:
 
-* Unnecessary protocols
-* Unnecessary ports
-* Unnecessary external destinations
-* Traffic that should remain inside the lab network
+```text
+Block unnecessary outbound traffic
+```
 
-Restrictions will only be implemented where they do not interfere with required lab functionality.
+The rule uses:
 
-Testing will be performed after each significant restriction.
+```text
+Source:      LAN net
+Destination: any
+Protocol:    any
+Action:      Block
+```
+
+This rule is placed at the **bottom** of the LAN rule set, after all required ALLOW rules.
+
+The resulting policy is:
+
+```text
+Specific required traffic
+        ↓
+      ALLOW
+        ↓
+Unmatched traffic
+        ↓
+      BLOCK
+```
+
+This reduces unnecessary outbound network access while preserving required connectivity for Active Directory services and external HTTP/HTTPS traffic.
+
+### Evidence
+
+```text
+screenshots/
+└── 04-outbound-restrictions.png
+```
 
 ---
 
 # 5. Configure NAT Policies
 
-NAT will be configured to allow the isolated lab network to access external networks through the OPNsense WAN interface.
+Outbound NAT was reviewed under:
+
+**Firewall → NAT → Source NAT**
+
+OPNsense provides automatically generated Source NAT rules for the lab's outbound connectivity through the WAN interface.
 
 The expected traffic flow is:
 
@@ -176,76 +216,94 @@ VirtualBox NAT
 Internet
 ```
 
-OPNsense will perform the appropriate outbound NAT for the lab network.
+No additional manual outbound NAT rule was required for the current lab architecture.
 
-NAT configuration will be reviewed to ensure that:
+The NAT configuration was reviewed to ensure that:
 
 * Lab clients can reach required external destinations.
-* Internal addressing is not exposed unnecessarily.
-* NAT rules match the intended network architecture.
+* Internal lab addressing is translated before reaching the upstream network.
+* NAT behaviour matches the intended network architecture.
+
+### Evidence
+
+```text
+screenshots/
+└── 05-nat-policy.png
+```
 
 ---
 
 # 6. Test Blocked and Permitted Traffic
 
-Firewall behaviour will be verified through controlled connectivity tests.
+Firewall behaviour is verified through controlled connectivity tests from the lab hosts.
 
-Tests will include both permitted and blocked traffic.
-
-Examples:
+Tests cover both permitted and blocked traffic.
 
 ### Permitted traffic
 
 ```text
-LAB → Internet
-LAB → DNS
-LAB → Required internal services
+LAB → Internet HTTPS
+LAB → DC01 DNS
+LAB → Required Active Directory services
 ```
+
+Example tests:
+
+```bash
+curl -4 -I --connect-timeout 5 https://example.com
+```
+
 
 ### Blocked traffic
 
-```text
-WAN → LAB
-Unauthorized service → LAB host
-Unnecessary outbound traffic
+Traffic that is not explicitly permitted is expected to be blocked by the final catch-all rule.
+
+Example:
+
+```bash
+nc -zv -w 3 1.1.1.1 25
 ```
 
-Testing will be performed from the lab hosts where appropriate.
+Firewall logs can be reviewed through OPNsense Live View to verify the corresponding decisions.
 
-Results will be documented as evidence that firewall rules behave as intended.
+### Evidence
+
+```text
+screenshots/
+└── 06-firewall-tests.png
+```
 
 ---
 
 # 7. Document Firewall Decisions
 
-Each significant firewall rule will have a documented purpose.
+Each significant firewall rule has a documented purpose.
 
-The documentation will explain:
+The firewall follows a simple security principle:
 
-* What traffic is being controlled.
-* Why the traffic is allowed or denied.
-* Which systems are affected.
-* Which protocol or port is involved.
-* What security objective the rule supports.
-
-Example:
+> Allow required traffic and deny unnecessary traffic.
 
 | Rule                         | Decision | Reason                                  |
 | ---------------------------- | -------- | --------------------------------------- |
-| LAN → DNS                    | Allow    | Required for name resolution            |
-| LAN → HTTPS                  | Allow    | Required for external services          |
-| WAN → LAN                    | Deny     | Prevent unsolicited inbound connections |
-| Unnecessary outbound traffic | Deny     | Reduce attack surface                   |
+| LAN → DC01 DNS               | Allow    | Required for name resolution            |
+| LAN → DC01 Kerberos          | Allow    | Required for AD authentication          |
+| LAN → DC01 LDAP              | Allow    | Required for directory services         |
+| LAN → DC01 SMB               | Allow    | Required for AD/SMB communication       |
+| LAN → DC01 RPC               | Allow    | Required for RPC-based AD communication |
+| LAN → DC01 Global Catalog    | Allow    | Required for directory queries          |
+| LAN → Internet HTTP          | Allow    | Required for external HTTP services     |
+| LAN → Internet HTTPS         | Allow    | Required for secure external services   |
+| Unnecessary outbound traffic | Deny     | Reduce unnecessary network exposure     |
 
-This ensures that firewall configuration remains understandable and maintainable.
+The firewall configuration is therefore based on explicit technical requirements rather than unrestricted connectivity.
 
 ---
 
 # 8. Implement Least-Privilege Network Access
 
-The final objective is to move from broad network access toward explicitly required access.
+The final configuration applies least-privilege principles to network access.
 
-The principle is:
+Instead of allowing unrestricted LAN connectivity, traffic is evaluated according to its actual requirement.
 
 ```text
 Default
@@ -255,34 +313,79 @@ Restrict
 Identify requirement
    ↓
 Allow only required traffic
+   ↓
+Block everything else
 ```
 
-Network access will be evaluated based on actual requirements rather than convenience.
-
-The resulting configuration should minimise:
+The resulting configuration minimises:
 
 * Unnecessary inbound access
 * Unnecessary outbound access
 * Unnecessary exposed services
 * Excessive network trust
 
-This approach will provide a foundation for future network segmentation, IDS/IPS, monitoring, and SIEM implementation.
+The lab therefore uses explicit ALLOW rules for required services followed by a final catch-all BLOCK rule.
+
+This provides a foundation for future network segmentation, IDS/IPS, monitoring, and SIEM implementation.
+
+### Evidence
+
+```text
+screenshots/
+└── 08-least-privilege.png
+```
 
 ---
 
 # Verification
 
-The following checks will be performed during this phase:
+The following checks were performed during this phase:
 
-* [ ] Firewall policy documented
-* [ ] Stateful firewall behaviour understood
-* [ ] LAN rules configured
-* [ ] Unnecessary outbound traffic reviewed
-* [ ] NAT configuration verified
-* [ ] Permitted traffic tested
-* [ ] Blocked traffic tested
-* [ ] Firewall decisions documented
-* [ ] Least-privilege access implemented
+* [x] Firewall policy documented
+* [x] Stateful firewall behaviour understood
+* [x] LAN rules configured
+* [x] Unnecessary outbound traffic reviewed
+* [x] NAT configuration verified
+* [x] Permitted traffic tested
+* [x] Blocked traffic tested
+* [x] Firewall decisions documented
+* [x] Least-privilege access implemented
+
+---
+
+# Troubleshooting
+
+## Catch-all block rule preventing permitted traffic
+
+### Symptom
+
+After enabling the `Block unnecessary outbound traffic` rule, Arch Linux could resolve DNS and communicate with DC01, but HTTPS connections to the Internet timed out.
+
+For example:
+
+```text
+DNS resolution:      Working
+Arch → DC01:         Working
+Arch → Internet:     Blocked
+```
+
+### Cause
+
+The catch-all BLOCK rule had been placed above the specific ALLOW rules.
+
+OPNsense evaluates firewall rules from top to bottom. Therefore, the general BLOCK rule matched the traffic before the corresponding ALLOW rule could be evaluated.
+
+### Resolution
+
+The `Block unnecessary outbound traffic` rule was moved to the bottom of the LAN rule set, below all required ALLOW rules.
+
+The default `Allow LAN to any` rule remained disabled.
+
+### Lesson learned
+
+Catch-all deny rules should be placed **after specific allow rules** so that required exceptions are evaluated first.
+
+This reinforced the importance of both rule design and rule ordering when implementing least-privilege firewall policies.
 
 ---
 
@@ -292,15 +395,15 @@ Planned evidence:
 
 ```text
 screenshots/
-├── 01-firewall-policy.png
+├── 01-firewall-baseline.png
 ├── 02-stateful-firewall.png
 ├── 03-lan-rules.png
 ├── 04-outbound-restrictions.png
 ├── 05-nat-policy.png
 ├── 06-firewall-tests.png
-├── 07-firewall-decisions.png
-└── 08-least-privilege.png
 ```
+
+The firewall decisions documented in section 7 are represented through the rule configuration and the outbound restriction evidence rather than requiring a duplicate screenshot.
 
 Screenshots should demonstrate configuration or verification rather than document every individual click.
 
@@ -310,7 +413,7 @@ Sensitive information such as passwords, private keys, tokens, or unnecessary pe
 
 # Phase Deliverables
 
-At the end of Phase 2, the lab should demonstrate:
+At the end of Phase 2, the lab demonstrates:
 
 * A documented firewall security policy.
 * Understanding of stateful firewall operation.
@@ -345,4 +448,4 @@ Future — Proxmox / Virtualization
 
 ## Status
 
-**In Progress**
+**Complete**
